@@ -1,0 +1,9 @@
+com.darlandi.carpoolingchallenge
+com.darlandi.carpoolingchallenge.controller
+com.darlandi.carpoolingchallenge.controller.embeddedRedisConfigurationTest
+com.darlandi.carpoolingchallenge.embeddedRedis
+com.darlandi.carpoolingchallenge.entities
+com.darlandi.carpoolingchallenge.exceptions
+com.darlandi.carpoolingchallenge.repository
+com.darlandi.carpoolingchallenge.services
+com.darlandi.carpoolingchallenge.utils
