@@ -1,4 +1,56 @@
-# Developer Notes
+# Developer Approach
+The programming language used to solve this challenge has been Java 18 with Spring Boot framework,
+and Maven for project building.
+
+### Data storage of cars and journeys
+Due to the large amount of Cars and Journeys (up to 10⁵), I have used an embedded Redis database to 
+keep a good performance, and Lettuce as the connector because it is thread-safe.
+
+A great advantage of Redis and Hashes is that most commands are O(1), so, even to get more performance,
+I have split the Hashes collections depending on the available seats to avoid searching
+in a Hash where I already know that there is no enough available seats. However, all the
+journeys introduced are stored in the same Hash because I do not see any reason to split them.
+
+A disadvantage of Hashes is that they are stored without any order, they are collections of 
+field-value pairs. So, for this basic approach, I assume that cars should not follow any order,
+the priority are the groups of people that can find a car with enough available seats.
+
+However, the order of arrival of the groups must be kept, so when a group of people request a car
+and there is no car with enough seats available, I use a Redis list to create a "waiting list" only for those
+waiting groups.
+
+
+
+### Dispatching cars for groups of people
+First, if a group of people arrives and there is a car available, then that car is assigned 
+to the group. But if there is no car available, I have implemented a "priority algorithm" that only
+assign a car if some drop-offs have been reached depending on the size of the car fleet.
+
+This approach, although it is very simple, allows to give more priority to the first waiting group,
+because maybe there is a group of 5 people waiting and it is harder to assign a car for them,
+than assign a car only for 1 person.
+
+So, for example, if there is a fleet of 10 cars, that size is multiplied by a constant of 0.3, so the
+drop-off limit is 3. If there is a first group of 5 people waiting for a car, that group has the priority during 
+a maximum of 3 tries, if after this, a car is not yet available, then the "blocking state" is broken and now all
+the waiting list is checked to find a group that could be served. Furthermore, if while the waiting list is being 
+checked, the next following groups cannot be served, they are also penalized adding a "waiting weight".
+
+### Tests
+Some unit test using JUint 5 have been implemented to check that the API REST methods are correct, and that
+the "priority algorithm" works perfectly.
+
+### Documentation
+All the code is documented using Javadoc. The index.html is located in the "javadoc" directory.
+
+### Logging
+Loggin has been implemented with Logback.
+
+### Improvements
+A great improvement would be to implement an "age queue" for the car fleet, to give more
+priority to those cars that have not been assigned to a group of people for a longer period.
+In this way, drivers would be happier because all of them will earn some money and the work
+would be better distributed.
 
 # Car Pooling Service Challenge
 

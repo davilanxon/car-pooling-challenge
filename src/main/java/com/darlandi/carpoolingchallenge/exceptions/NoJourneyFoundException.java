@@ -1,8 +1,8 @@
 package com.darlandi.carpoolingchallenge.exceptions;
 
-public class NoJourneyFoundException extends ErrorException {
+public class NoJourneyFoundException extends Exception {
 
-    public NoJourneyFoundException(Class cls){
-        super(cls, "No journey found");
+    public NoJourneyFoundException(){
+        super();
     }
 }

@@ -2,7 +2,6 @@ package com.darlandi.carpoolingchallenge.repository;
 
 import com.darlandi.carpoolingchallenge.entities.Car;
 import com.darlandi.carpoolingchallenge.utils.Constants;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Repository;

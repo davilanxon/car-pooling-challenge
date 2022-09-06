@@ -88,6 +88,7 @@ class CarPoolingControllerTest {
                   }
                                 
                 """;
+        //Add three journeys
         for (int i = 0; i < 3; i++) {
             String jsonMessage = String.format(json, i);
             HttpEntity<String> request = new HttpEntity<>(jsonMessage, headers);
@@ -114,17 +115,19 @@ class CarPoolingControllerTest {
             ResponseEntity<CarDataTransferObject> response =
                     testRestTemplate.exchange("/locate", HttpMethod.POST, request, CarDataTransferObject.class);
             CarDataTransferObject carResult = response.getBody();
+            //First group should be in a car
             if (i == 0) {
                 assertEquals(1L, carResult.getId());
                 assertEquals(4, carResult.getSeats());
                 assertEquals(HttpStatus.OK, response.getStatusCode());
             }
+            //Also second group of people
             else if (i == 1){
                 assertEquals(2L, carResult.getId());
                 assertEquals(5, carResult.getSeats());
                 assertEquals(HttpStatus.OK, response.getStatusCode());
             }
-            //Waiting group
+            //The third group should be waiting
             else if (i == 2){
                 assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
             }
@@ -139,13 +142,13 @@ class CarPoolingControllerTest {
         headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
         headers.setAccept(Arrays.asList(MediaType.APPLICATION_JSON));
 
-        //Dropoff a journey
+        //Dropoff second journey
         String dropOffId = "ID=101";
         HttpEntity<String> request = new HttpEntity<>(dropOffId, headers);
         ResponseEntity<String> response =
                 testRestTemplate.exchange("/dropoff", HttpMethod.POST, request, String.class);
 
-        //Locate the waiting journey
+        //Locate the third waiting group, now they should be in the second car
         String waitingJourney = "ID=102";
         request = new HttpEntity<>(waitingJourney, headers);
         ResponseEntity<CarDataTransferObject> response1 =

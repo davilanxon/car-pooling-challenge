@@ -11,24 +11,15 @@ public class Journey implements Serializable {
     private Integer people;
     private Long carId;
     private int waitingWeight;
-    private boolean register;
 
     public Journey() {
     }
 
-    public Journey(Long id, Integer people, Boolean register) {
+    public Journey(Long id, Integer people) {
         this.id = id;
         this.people = people;
-        this.register = register;
     }
 
-    public Boolean getRegister() {
-        return register;
-    }
-
-    public void setRegister(Boolean register) {
-        this.register = register;
-    }
     public int getWaitingWeight() {
         return waitingWeight;
     }

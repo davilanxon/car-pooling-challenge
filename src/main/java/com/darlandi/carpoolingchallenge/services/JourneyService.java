@@ -3,7 +3,7 @@ package com.darlandi.carpoolingchallenge.services;
 import com.darlandi.carpoolingchallenge.entities.Car;
 import com.darlandi.carpoolingchallenge.entities.CarDataTransferObject;
 import com.darlandi.carpoolingchallenge.entities.Journey;
-import com.darlandi.carpoolingchallenge.entities.JourneyDTO;
+import com.darlandi.carpoolingchallenge.entities.JourneyDataTransferObject;
 import com.darlandi.carpoolingchallenge.exceptions.BadInputException;
 import com.darlandi.carpoolingchallenge.exceptions.NoCarAvailableException;
 import com.darlandi.carpoolingchallenge.exceptions.NoCarFoundException;
@@ -24,7 +24,7 @@ import java.util.Optional;
  */
 @Service
 public class JourneyService {
-
+    private static final Logger logger = LoggerFactory.getLogger(JourneyService.class);
     @Autowired
     private JourneyRepository journeyRepository;
 
@@ -37,46 +37,37 @@ public class JourneyService {
     /**
      * Check if the journey introduced satisfy max and minimum people,
      * and if it is not already saved in the Redis DB.
-     * If the journey is not found in the DB then save it and try to find a car.
-     * If the journey is found and is unregistered, then update it.
-     * If the journey is found and already registered, then do nothing.
+     * If the journey is not found in the DB, then save it and try to find a car.
      *
      * @param journeyDTO JourneyDTO object.
      */
-    public void checkAndRegister(JourneyDTO journeyDTO) throws BadInputException, NoCarAvailableException {
-        Journey journey = null;
-        boolean statusRegister = false;
 
+    public void register(JourneyDataTransferObject journeyDTO) throws BadInputException, NoCarAvailableException {
         Optional<Journey> journeyOptional = journeyRepository.get(journeyDTO.getId());
         if (journeyDTO.getId() == null || journeyDTO.getPeople() == null ||
                 journeyDTO.getPeople() > Constants.MAX_PEOPLE ||
-                journeyDTO.getPeople() < Constants.MIN_PEOPLE) {
-            throw new BadInputException(this.getClass());
+                journeyDTO.getPeople() < Constants.MIN_PEOPLE ||
+                journeyOptional.isPresent()) {
+            throw new BadInputException();
         }
         if (journeyOptional.isEmpty()) {
-            journey = new Journey(journeyDTO.getId(), journeyDTO.getPeople(), true);
+            Journey journey = new Journey(journeyDTO.getId(), journeyDTO.getPeople());
             journeyRepository.create(journey);
-            statusRegister = true;
-        } else if (journeyOptional.isPresent() && !journeyOptional.get().getRegister()) {
-            journey = journeyOptional.get();
-            journey.setRegister(true);
-            journey.setPeople(journeyDTO.getPeople());
-            journeyRepository.update(journey);
-            statusRegister = true;
-        }
-        if (journeyRepository.sizeWaitingList() == 0 && statusRegister) {
-            seatDispatcherService.assignAvailableCar(journey);
-        } else if (statusRegister) {
-            throw new NoCarAvailableException(this.getClass());
+            if (journeyRepository.sizeWaitingList() == 0) {
+                seatDispatcherService.assignAvailableCar(journey);
+            } else {
+                throw new NoCarAvailableException();
+            }
         }
     }
 
+
     /**
-     * Free the car associated with the journey and unregister that group of people.
-     * If the there is no car, also delete the journey from the waiting list.
+     * Free the car associated with the journey and remove the journey from the DB.
      *
      * @param id ID of the journey.
      */
+
     public void dropOffGroup(Long id) throws NoJourneyFoundException, NoCarFoundException {
         Optional<Journey> journeyOptional = journeyRepository.get(id);
         if (journeyOptional.isPresent()) {
@@ -86,21 +77,22 @@ public class JourneyService {
                     seatDispatcherService.updateAvailableSeats(carOptional.get(),
                             carOptional.get().getAvailableSeats() + journeyOptional.get().getPeople());
                 } else {
-                    throw new NoCarFoundException(this.getClass());
+                    throw new NoCarFoundException();
                 }
             } else {
                 journeyRepository.removeWaitingList(id);
             }
-            journeyRepository.unregister(id);
+            journeyRepository.delete(id);
         } else {
-            throw new NoJourneyFoundException(this.getClass());
+            throw new NoJourneyFoundException();
         }
     }
+
 
     /**
      * Check the first waiting journey and try to find a car for it. Keep the order
      * of arrival, but if there is no car available, add a waiting weight to that
-     * journey and check the next waiting journey in the list.
+     * journey and try to check the next waiting journey in the list.
      */
     public void checkWaitingJourneys() {
         Optional<Journey> journeyOptional = journeyRepository.getFirstWaiting();
@@ -109,6 +101,7 @@ public class JourneyService {
             try {
                 seatDispatcherService.assignAvailableCar(journeyWaiting);
             } catch (NoCarAvailableException e) {
+                logger.warn(e + " There is no car with enough seats available for the waiting journey ID: " + journeyWaiting.getId());
                 addWeightToJourney(journeyWaiting);
                 checkWeightWaitingJourneys(journeyWaiting);
             }
@@ -133,6 +126,7 @@ public class JourneyService {
                         seatDispatcherService.assignAvailableCar(nextWaitingJourney.get());
                         break;
                     } catch (NoCarAvailableException e) {
+                        logger.warn(e + " There is no car with enough seats available for the waiting journey ID: " + journeyWaiting.getId());
                         addWeightToJourney(nextWaitingJourney.get());
                     }
                 }
@@ -157,15 +151,15 @@ public class JourneyService {
      * @param journeyId ID of the journey to search.
      * @return Optional CarDataTransferObject.
      */
-    public Optional<CarDataTransferObject> getJourneyCar(Long journeyId) throws NoCarFoundException {
+    public Optional<CarDataTransferObject> getJourneyCar(Long journeyId) throws NoJourneyFoundException {
         Optional<Journey> journeyOptional = journeyRepository.get(journeyId);
-        if (journeyOptional.isPresent() && journeyOptional.get().getRegister()) {
+        if (journeyOptional.isPresent()) {
             Optional<Car> carOptional = carPoolingRepository.get(journeyOptional.get().getCarId());
             CarDataTransferObject carDTO = new CarDataTransferObject(carOptional.get().getId(),
                     carOptional.get().getSeats());
             return Optional.of(carDTO);
         }
-        throw new NoCarFoundException(this.getClass());
+        throw new NoJourneyFoundException();
     }
 
     /**
@@ -177,8 +171,8 @@ public class JourneyService {
     public void journeyWaiting(Long journeyId) throws NoCarAvailableException {
         Optional<Journey> journeyOptional = journeyRepository.get(journeyId);
         if (journeyOptional.isPresent()) {
-            if (journeyOptional.get().getCarId() == null && journeyOptional.get().getRegister()) {
-                throw new NoCarAvailableException(this.getClass());
+            if (journeyOptional.get().getCarId() == null) {
+                throw new NoCarAvailableException();
             }
         }
     }

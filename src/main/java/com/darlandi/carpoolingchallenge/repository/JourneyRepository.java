@@ -107,15 +107,10 @@ public class JourneyRepository {
      * Delete a journey.
      * @param journeyId ID of the journey.
      */
-    public void unregister(Long journeyId) {
-        Optional <Journey> journeyOptional = get (journeyId);
-        if (journeyOptional.isPresent()){
-            Journey journey = journeyOptional.get();
-            journey.setRegister(false);
-            journey.setCarId(null);
-            update(journey);
-        }
+    public void delete(Long journeyId) {
+        hashOperations.delete(KEY, journeyId);
     }
+
 
     /**
      * Remove a waiting journey ID from the waiting list.

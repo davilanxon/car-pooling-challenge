@@ -1,8 +1,7 @@
 package com.darlandi.carpoolingchallenge.controller;
 
 import com.darlandi.carpoolingchallenge.entities.CarDataTransferObject;
-import com.darlandi.carpoolingchallenge.entities.Journey;
-import com.darlandi.carpoolingchallenge.entities.JourneyDTO;
+import com.darlandi.carpoolingchallenge.entities.JourneyDataTransferObject;
 import com.darlandi.carpoolingchallenge.exceptions.BadInputException;
 import com.darlandi.carpoolingchallenge.exceptions.NoCarAvailableException;
 import com.darlandi.carpoolingchallenge.exceptions.NoCarFoundException;
@@ -11,7 +10,6 @@ import com.darlandi.carpoolingchallenge.repository.CarPoolingRepository;
 import com.darlandi.carpoolingchallenge.repository.JourneyRepository;
 import com.darlandi.carpoolingchallenge.services.CarPoolingService;
 import com.darlandi.carpoolingchallenge.services.JourneyService;
-import com.darlandi.carpoolingchallenge.utils.Constants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -67,13 +65,14 @@ public class CarPoolingController {
     public ResponseEntity<String> loadAvailableCars(@RequestBody List<CarDataTransferObject> carList) {
         carPoolingRepository.deleteAll();
         journeyRepository.deleteAll();
-        logger.info("All repositories cleared");
+        logger.info("All repositories cleared.");
         try {
-            carPoolingService.checkAndSave(carList);
+            carPoolingService.register(carList);
         } catch (BadInputException e) {
+            logger.error(e + " Error registering the car list, the input is not correct or an ID is repeated.");
             return ResponseEntity.badRequest().build();
         }
-        logger.info("All cars saved in DB");
+        logger.info("All cars correctly saved in DB.");
         return ResponseEntity.ok().build();
     }
 
@@ -87,16 +86,18 @@ public class CarPoolingController {
      * payload can't be unmarshalled.
      */
     @PostMapping("/journey")
-    public ResponseEntity<String> peopleJourney(@RequestBody JourneyDTO journeyDTO) {
+    public ResponseEntity<String> peopleJourney(@RequestBody JourneyDataTransferObject journeyDTO) {
         try {
-            journeyService.checkAndRegister(journeyDTO);
+            journeyService.register(journeyDTO);
         } catch (BadInputException e) {
+            logger.error(e + " Error registering the journey ID " + journeyDTO.getId() + ", the input is not correct or it has already been saved.");
             return ResponseEntity.badRequest().build();
         } catch (NoCarAvailableException e) {
             journeyRepository.addToWaitingList(journeyDTO.getId());
-            logger.info("Journey added to waiting list");
+            logger.error(e + " There is no car available for the journey ID " + journeyDTO.getId());
+            logger.info(e + " Journey ID " + journeyDTO.getId() + " added to waiting list.");
         }
-        logger.info("Journey correctly saved in DB");
+        logger.info("Journey ID " + journeyDTO.getId() +" correctly saved in DB.");
         return ResponseEntity.ok().build();
     }
 
@@ -113,18 +114,23 @@ public class CarPoolingController {
      */
     @PostMapping(value = "/dropoff", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
     public ResponseEntity<String> dropoff(@RequestBody MultiValueMap<String, String> journeyID) {
-        long id;
+        Long id = null;
 
         try {
             id = carPoolingService.mapToId(journeyID);
             journeyService.dropOffGroup(id);
         } catch (BadInputException e) {
+            logger.error(e + " Error unregistering the journey ID " + id + ", the input is not correct or it has been already deleted.");
             return ResponseEntity.badRequest().build();
-        } catch (NoJourneyFoundException | NoCarFoundException e) {
+        } catch (NoJourneyFoundException e) {
+            logger.error(e + " Error unregistering the journey ID " + id + ", no journey has been found in DB.");
+            return ResponseEntity.notFound().build();
+        } catch (NoCarFoundException e) {
+            logger.error(e + " Error unregistering the journey ID " + id + ", no car has been found in DB.");
             return ResponseEntity.notFound().build();
         }
         journeyService.checkWaitingJourneys();
-        logger.info("Journey correctly unregistered and waiting journeys checked");
+        logger.info("Journey ID "+ id + " correctly unregistered and waiting journeys checked.");
         return ResponseEntity.ok().build();
     }
 
@@ -145,7 +151,7 @@ public class CarPoolingController {
      */
     @PostMapping(value = "/locate", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
     public ResponseEntity<CarDataTransferObject> locate(@RequestBody MultiValueMap<String, String> journeyID) {
-        long id;
+        Long id = null;
         Optional<CarDataTransferObject> carDTOptional = null;
 
         try {
@@ -153,13 +159,16 @@ public class CarPoolingController {
             journeyService.journeyWaiting(id);
             carDTOptional = journeyService.getJourneyCar(id);
         } catch (BadInputException e) {
+            logger.error(e + " Error locating the journey ID " + id + ", the input is not correct.");
             return ResponseEntity.badRequest().build();
         } catch (NoCarAvailableException e) {
+            logger.warn(e + " The journey ID " + id + " is still waiting for a car.");
             return ResponseEntity.noContent().build();
-        } catch (NoCarFoundException e) {
+        } catch (NoJourneyFoundException e) {
+            logger.error(e + " Error, no journey ID " + id +" found in DB.");
             return ResponseEntity.notFound().build();
         }
-        logger.info("Car location successful");
+        logger.info("Journey ID "+ id + " location successful.");
         return ResponseEntity.ok(carDTOptional.get());
     }
 }

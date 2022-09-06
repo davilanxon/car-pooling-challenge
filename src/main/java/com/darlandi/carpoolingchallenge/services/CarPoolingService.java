@@ -19,7 +19,7 @@ import java.util.Set;
 @Service
 public class CarPoolingService {
     private static final String KEY_ID = "ID";
-    public static Integer carListSize;
+    public static long carListSize;
 
     @Autowired
     private SeatDispatcherService seatDispatcherService;
@@ -35,7 +35,7 @@ public class CarPoolingService {
      *
      * @param carList JSON list with all the cars.
      */
-    public void checkAndSave(List<CarDataTransferObject> carList) throws BadInputException {
+    public void register(List<CarDataTransferObject> carList) throws BadInputException {
         Set<Long> registeredId = new HashSet<>();
         carListSize = carList.size();
         for (CarDataTransferObject carDTO : carList) {
@@ -44,7 +44,7 @@ public class CarPoolingService {
                     registeredId.contains(carDTO.getId())) {
                 registeredId.clear();
                 carPoolingRepository.deleteAll();
-                throw new BadInputException(this.getClass());
+                throw new BadInputException();
             }
             registeredId.add(carDTO.getId());
             Car newCar = new Car(carDTO.getId(), carDTO.getSeats());
@@ -57,18 +57,18 @@ public class CarPoolingService {
      * Convert the MultiValueMap input into a valid ID
      * @param mapId MultiValueMap
      * @return ID (long)
-     * @throws BadInputException
+     * @throws BadInputException If the input is not correct.
      */
     public long mapToId(MultiValueMap<String, String> mapId) throws BadInputException {
         long id = 0;
 
         if (mapId.isEmpty() || !mapId.containsKey(KEY_ID) || mapId.get(KEY_ID).size() > 1) {
-            throw new BadInputException(this.getClass());
+            throw new BadInputException();
         }
         try {
             id = Long.parseLong(mapId.getFirst(KEY_ID));
         } catch (NumberFormatException e) {
-            throw new BadInputException(this.getClass());
+            throw new BadInputException();
         }
         return id;
     }

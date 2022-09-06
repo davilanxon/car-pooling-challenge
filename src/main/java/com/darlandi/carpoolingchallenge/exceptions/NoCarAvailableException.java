@@ -1,8 +1,8 @@
 package com.darlandi.carpoolingchallenge.exceptions;
 
-public class NoCarAvailableException extends ErrorException {
+public class NoCarAvailableException extends Exception {
 
-    public NoCarAvailableException(Class cls){
-        super(cls, "No car with seats available");
+    public NoCarAvailableException(){
+        super();
     }
 }

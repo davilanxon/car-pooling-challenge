@@ -6,6 +6,8 @@ import com.darlandi.carpoolingchallenge.exceptions.NoCarAvailableException;
 import com.darlandi.carpoolingchallenge.repository.CarPoolingRepository;
 import com.darlandi.carpoolingchallenge.repository.JourneyRepository;
 import com.darlandi.carpoolingchallenge.utils.Constants;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -16,6 +18,7 @@ import java.util.Optional;
  */
 @Component
 public class SeatDispatcherService {
+    private static final Logger logger = LoggerFactory.getLogger(SeatDispatcherService.class);
 
     @Autowired
     private JourneyRepository journeyRepository;
@@ -63,11 +66,12 @@ public class SeatDispatcherService {
                 journey.setCarId(carAvailable.get().getId());
                 journeyRepository.update(journey);
                 journeyRepository.removeWaitingList(journey.getId());
+                logger.info("Car ID " + carAvailable.get().getId() + " assigned to the journey ID " + journey.getId());
                 break;
             }
         }
         if (carAvailable.isEmpty()) {
-            throw new NoCarAvailableException(this.getClass());
+            throw new NoCarAvailableException();
         }
     }
 }
