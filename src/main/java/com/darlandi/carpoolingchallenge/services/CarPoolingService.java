@@ -19,7 +19,6 @@ import java.util.Set;
 @Service
 public class CarPoolingService {
     private static final String KEY_ID = "ID";
-    public static long carListSize;
 
     @Autowired
     private SeatDispatcherService seatDispatcherService;
@@ -37,7 +36,6 @@ public class CarPoolingService {
      */
     public void register(List<CarDataTransferObject> carList) throws BadInputException {
         Set<Long> registeredId = new HashSet<>();
-        carListSize = carList.size();
         for (CarDataTransferObject carDTO : carList) {
             if (carDTO.getId() == null || carDTO.getSeats() == null ||
                     carDTO.getSeats() < Constants.MIN_SEATS || carDTO.getSeats() > Constants.MAX_SEATS ||

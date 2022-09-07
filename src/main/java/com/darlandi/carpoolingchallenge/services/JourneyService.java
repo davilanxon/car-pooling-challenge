@@ -116,7 +116,7 @@ public class JourneyService {
      * @param journeyWaiting First waiting journey.
      */
     private void checkWeightWaitingJourneys(Journey journeyWaiting) {
-        double limit = CarPoolingService.carListSize * 0.3;
+        double limit = carPoolingRepository.totalSize() * 0.3;
         if (journeyWaiting.getWaitingWeight() > limit) {
             List<Long> waitingJourneysIds = journeyRepository.getAllWaitingIds();
             for (int i = 1; i < waitingJourneysIds.size(); i++) {
